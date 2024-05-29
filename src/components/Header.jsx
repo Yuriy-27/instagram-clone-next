@@ -1,13 +1,26 @@
 "use client";
 
-import { useRef, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { signIn, useSession, signOut } from "next-auth/react";
+import Modal from "react-modal";
+import { useEffect, useRef, useState } from "react";
 import { IoMdAddCircleOutline } from "react-icons/io";
 import { HiCamera } from "react-icons/hi";
 import { AiOutlineClose } from "react-icons/ai";
-import Image from "next/image";
-import Link from "next/link";
-import Modal from "react-modal";
+import { app } from "@/firebase";
+import {
+  getDownloadURL,
+  getStorage,
+  ref,
+  uploadBytesResumable,
+} from "firebase/storage";
+import {
+  addDoc,
+  collection,
+  getFirestore,
+  serverTimestamp,
+} from "firebase/firestore";
 
 export default function Header() {
   const { data: session } = useSession();
@@ -18,6 +31,47 @@ export default function Header() {
   const [postUploading, setPostUploading] = useState(false);
   const [caption, setCaption] = useState("");
   const filePickerRef = useRef(null);
+  function addImageToPost(e) {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      setImageFileUrl(URL.createObjectURL(file));
+    }
+  }
+
+  async function uploadImageToStorage() {
+    setImageFileUploading(true);
+    const storage = getStorage(app);
+    const fileName = new Date().getTime() + "-" + selectedFile.name;
+    const storageRef = ref(storage, fileName);
+    const uploadTask = uploadBytesResumable(storageRef, selectedFile);
+    uploadTask.on(
+      "state_changed",
+      (snapshot) => {
+        const progress =
+          (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        console.log("Upload is " + progress + "% done");
+      },
+      (error) => {
+        console.error(error);
+        setImageFileUploading(false);
+        setImageFileUrl(null);
+        setSelectedFile(null);
+      },
+      () => {
+        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+          setImageFileUrl(downloadURL);
+          setImageFileUploading(false);
+        });
+      }
+    );
+  }
+
+  useEffect(() => {
+    if (selectedFile) {
+      uploadImageToStorage();
+    }
+  }, [selectedFile]);
 
   return (
     <div className='shadow-sm border-b sticky top-0 bg-white z-30 p-3'>
@@ -100,7 +154,7 @@ export default function Header() {
               ref={filePickerRef}
               type='file'
               accept='image/*'
-              // onChange={addImageToPost}
+              onChange={addImageToPost}
             />
           </div>
           <input
