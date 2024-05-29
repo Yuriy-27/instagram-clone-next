@@ -31,6 +31,7 @@ export default function Header() {
   const [postUploading, setPostUploading] = useState(false);
   const [caption, setCaption] = useState("");
   const filePickerRef = useRef(null);
+  const db = getFirestore(app);
   function addImageToPost(e) {
     const file = e.target.files[0];
     if (file) {
@@ -66,6 +67,20 @@ export default function Header() {
       }
     );
   }
+  // console.log(session);
+  async function handleSubmit() {
+    setPostUploading(true);
+    const docRef = await addDoc(collection(db, "posts"), {
+      username: session.user.username,
+      caption,
+      profileImg: session.user.image,
+      image: imageFileUrl,
+      timestamp: serverTimestamp(),
+    });
+    setPostUploading(false);
+    setIsOpen(false);
+    location.reload();
+  }
 
   useEffect(() => {
     if (selectedFile) {
@@ -76,14 +91,14 @@ export default function Header() {
   return (
     <div className='shadow-sm border-b sticky top-0 bg-white z-30 p-3'>
       <div className='flex justify-between items-center max-w-6xl mx-auto'>
+        {/* logo */}
+
         <Link href='/' className='hidden lg:inline-flex'>
           <Image
             src='/Instagram_logo_black.webp'
             width={96}
             height={96}
             alt='instagram logo'
-            priority
-            style={{ width: "auto" }}
           />
         </Link>
 
@@ -103,6 +118,8 @@ export default function Header() {
           placeholder='Search'
           className='bg-gray-50 border border-gray-200 rounded text-sm w-full py-2 px-4 max-w-[210px]'
         />
+
+        {/* menu items */}
 
         {session ? (
           <div className='flex gap-2 items-center'>
@@ -165,7 +182,7 @@ export default function Header() {
             onChange={(e) => setCaption(e.target.value)}
           />
           <button
-            // onClick={handleSubmit}
+            onClick={handleSubmit}
             disabled={
               !selectedFile ||
               caption.trim() === "" ||
